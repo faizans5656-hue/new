@@ -10,7 +10,11 @@ const title = "Digital card templates for every occasion — Lumora";
 const description =
   "Browse premium and free interactive digital card templates for birthdays, love, anniversaries, weddings, friendship and apologies.";
 
-type Search = { occasion?: Occasion; q?: string; plan?: "free" | "premium" };
+type Search = {
+  occasion?: Occasion | undefined;
+  q?: string | undefined;
+  plan?: "free" | "premium" | undefined;
+};
 
 export const Route = createFileRoute("/templates/")({
   validateSearch: (search: Record<string, unknown>): Search => ({
