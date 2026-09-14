@@ -40,10 +40,13 @@ function RecipientPage() {
     seedDemoExperience();
     const t = setTimeout(() => {
       const exp = getExperienceBySlug(slug);
-      if (!exp) { setExperience("not-found"); return; }
-      setExperience(exp);
-      recordView(slug);
-      setPhase("reveal");
+      setExperience(exp || "not-found");
+      if (exp) {
+        recordView(slug);
+        setPhase("reveal");
+      } else {
+        setPhase("done"); // Break out of the loading phase so NotFoundScreen can render
+      }
     }, 1600);
     return () => clearTimeout(t);
   }, [slug]);
