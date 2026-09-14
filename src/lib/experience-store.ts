@@ -143,20 +143,20 @@ async function uploadBase64Photo(base64Data: string): Promise<string> {
   const b64Data = match[2];
   
   try {
-    const byteCharacters = atob(b64Data);
+    const byteCharacters = atob(b64Data || "");
     const byteArrays = [];
     for (let i = 0; i < byteCharacters.length; i++) {
       byteArrays.push(byteCharacters.charCodeAt(i));
     }
     const byteArray = new Uint8Array(byteArrays);
-    const blob = new Blob([byteArray], { type: contentType });
+    const blob = new Blob([byteArray], { type: contentType || 'image/jpeg' });
     
     const ext = contentType?.split('/')[1] || 'jpg';
     const filename = `${crypto.randomUUID()}.${ext}`;
     
     const { data, error } = await supabase.storage
       .from('lumora_photos')
-      .upload(filename, blob, { contentType });
+      .upload(filename, blob, { contentType: contentType || 'image/jpeg' });
       
     if (error) throw error;
     

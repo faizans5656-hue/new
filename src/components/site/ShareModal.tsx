@@ -7,7 +7,7 @@ interface ShareModalProps {
   open: boolean;
   onClose: () => void;
   slug: string;
-  recipientName?: string;
+  recipientName?: string | undefined;
 }
 
 export function ShareModal({ open, onClose, slug, recipientName }: ShareModalProps) {

@@ -73,9 +73,9 @@ function CreateWizard() {
       clearDraft();
       setShareSlug(exp.slug);
       setStep("share");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to publish:", err);
-      alert("Failed to publish your surprise. Please try again.");
+      alert("Failed to publish your surprise: " + (err.message || "Unknown error"));
     } finally {
       setIsPublishing(false);
     }
@@ -152,7 +152,7 @@ function CreateWizard() {
         {step === "share" && shareSlug && (
           <ShareStep
             slug={shareSlug}
-            recipientName={draft.recipientName}
+            recipientName={draft.recipientName ?? ""}
           />
         )}
       </main>
