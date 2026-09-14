@@ -81,12 +81,14 @@ function CreateWizard() {
     }
   };
 
-  const bgStyle = config
-    ? { background: config.theme.bg }
+  const activeConfig = step === "occasion" ? null : config;
+  const bgStyle = activeConfig
+    ? { background: activeConfig.theme.bg }
     : { background: "linear-gradient(145deg, #FFE8EC 0%, #FFD6DF 100%)" };
+  const isDark = activeConfig?.theme.textColor === "#FFFFFF" || activeConfig?.id === "birthday";
 
   return (
-    <div className="min-h-[100dvh] transition-all duration-700" style={bgStyle}>
+    <div className={`min-h-[100dvh] transition-all duration-700 ${isDark ? "dark text-foreground" : "text-foreground"}`} style={bgStyle}>
       {/* Header */}
       <header className="safe-top flex h-14 items-center justify-between px-4">
         {step !== "occasion" ? (
@@ -178,7 +180,7 @@ function OccasionStep({ onSelect }: { onSelect: (id: OccasionId) => void }) {
             key={occ.id}
             type="button"
             onClick={() => onSelect(occ.id)}
-            className="group surface-card flex flex-col items-center gap-2 p-5 text-center transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] active:scale-95"
+            className="group surface-card bg-card text-card-foreground flex flex-col items-center gap-2 p-5 text-center transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] active:scale-95"
           >
             <span className="text-3xl transition-transform group-hover:scale-110">{occ.emoji}</span>
             <span className="font-semibold text-sm text-foreground">{occ.label}</span>
@@ -210,7 +212,7 @@ function NameStep({
 
   return (
     <div className="rise-in mx-auto max-w-sm pt-8">
-      <div className="surface-card p-7">
+      <div className="surface-card bg-card text-card-foreground p-7">
         <h1 className="text-center font-display text-2xl text-foreground">
           Who is this{" "}
           <em className="not-italic" style={{ color: config.theme.accent }}>
@@ -284,7 +286,7 @@ function QuestionStep({
 
   return (
     <div className="rise-in mx-auto max-w-sm pt-8">
-      <div className="surface-card p-6">
+      <div className="surface-card bg-card text-card-foreground p-6">
         <h1 className="text-center font-display text-2xl text-foreground">
           Pick a{" "}
           <em className="not-italic" style={{ color: config.theme.accent }}>
@@ -406,7 +408,7 @@ function CustomizeStep({
 
       <div className="mt-5 space-y-4">
         {/* YES / NO text */}
-        <div className="surface-card p-4 space-y-3">
+        <div className="surface-card bg-card text-card-foreground p-4 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Button text</p>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
@@ -431,7 +433,7 @@ function CustomizeStep({
         </div>
 
         {/* Photos */}
-        <div className="surface-card p-4">
+        <div className="surface-card bg-card text-card-foreground p-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               📸 Memories ({photos.length}/5)
@@ -494,7 +496,7 @@ function CustomizeStep({
         </div>
 
         {/* Music */}
-        <div className="surface-card p-4">
+        <div className="surface-card bg-card text-card-foreground p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             🎵 Background music (optional)
           </p>
@@ -520,7 +522,7 @@ function CustomizeStep({
         </div>
 
         {/* Final message */}
-        <div className="surface-card p-4">
+        <div className="surface-card bg-card text-card-foreground p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             💬 Final message
           </p>
@@ -675,10 +677,12 @@ function InteractivePreview({
     );
   }
 
+  const isDark = config?.theme.textColor === "#FFFFFF" || config?.id === "birthday";
+
   return (
     <div
       ref={containerRef}
-      className="relative flex min-h-[500px] flex-col items-center justify-center overflow-hidden p-6 text-center"
+      className={`relative flex min-h-[500px] flex-col items-center justify-center overflow-hidden p-6 text-center ${isDark ? "dark text-foreground" : "text-foreground"}`}
       style={{ background: config.theme.bg }}
     >
       {/* Particles */}
@@ -714,7 +718,7 @@ function InteractivePreview({
       <button
         type="button"
         onClick={moveNo}
-        className="absolute z-20 rounded-xl border border-border bg-white/90 px-3 py-2 text-xs font-semibold shadow-sm backdrop-blur-sm transition-all duration-300"
+        className="absolute z-20 rounded-xl border border-border bg-white/90 px-3 py-2 text-xs font-semibold shadow-sm backdrop-blur-sm transition-all duration-300 text-gray-900"
         style={
           noPos
             ? { left: noPos.x, top: noPos.y, position: "absolute" }
@@ -745,7 +749,7 @@ function ShareStep({ slug, recipientName }: { slug: string; recipientName?: stri
       <p className="text-muted-foreground">
         Share the link with {recipientName ?? "them"} and watch the magic happen ✨
       </p>
-      <div className="surface-card w-full max-w-sm p-4 text-left">
+      <div className="surface-card bg-card text-card-foreground w-full max-w-sm p-4 text-left">
         <p className="text-xs text-muted-foreground">Your link</p>
         <p className="mt-1 font-mono text-sm font-semibold break-all">
           {typeof window !== "undefined" ? window.location.origin : ""}/s/{slug}

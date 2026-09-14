@@ -111,10 +111,11 @@ function RecipientPage() {
 
   const config = getOccasionConfig(experience.occasion);
   const hasMusicToggle = !!experience.musicTrack;
+  const isDark = config.theme.textColor === "#FFFFFF";
 
   return (
     <div
-      className="min-h-[100dvh] overflow-hidden"
+      className={`min-h-[100dvh] overflow-hidden ${isDark ? "dark text-foreground" : "text-foreground"}`}
       style={{ background: config.theme.bg }}
     >
       {/* Music toggle */}
@@ -338,8 +339,13 @@ function QuestionScreen({
         ref={yesBtnRef}
         type="button"
         onClick={onYes}
-        className="relative z-10 mt-8 h-14 min-w-[180px] rounded-3xl text-lg font-bold shadow-[0_8px_32px_rgba(0,0,0,0.15)] transition-all hover:scale-105 hover:shadow-[0_12px_48px_rgba(0,0,0,0.2)] active:scale-95"
-        style={{ background: config.theme.primary, color: config.theme.primaryText }}
+        className="relative z-10 mt-8 rounded-3xl font-bold shadow-[0_8px_32px_rgba(0,0,0,0.15)] transition-all hover:scale-105 hover:shadow-[0_12px_48px_rgba(0,0,0,0.2)] active:scale-95"
+        style={{
+          background: config.theme.primary,
+          color: config.theme.primaryText,
+          fontSize: `${1.125 + noCount * 0.5}rem`,
+          padding: `${0.875 + noCount * 0.4}rem ${1.5 + noCount * 0.8}rem`,
+        }}
         aria-label={`YES: ${experience.yesText}`}
       >
         {experience.yesText}
@@ -359,7 +365,7 @@ function QuestionScreen({
         onClick={moveNo}
         onKeyDown={handleNoKeyDown}
         aria-label="No (but it will run away!)"
-        className="z-20 rounded-2xl border border-border bg-white/90 px-5 py-3 text-sm font-semibold text-foreground shadow-md backdrop-blur-sm select-none"
+        className="z-20 rounded-2xl border border-border bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-md backdrop-blur-sm select-none"
         style={
           noPos
             ? {
@@ -541,13 +547,13 @@ function FinalScreen({
           className="w-full rounded-3xl p-7 shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
           style={{ background: "rgba(255,255,255,0.88)", backdropFilter: "blur(12px)" }}
         >
-          <p className="font-display text-xl leading-relaxed text-foreground">
+          <p className="font-display text-xl leading-relaxed text-gray-900">
             {experience.message ||
               `Made this little surprise just for you, ${experience.recipientName}. I hope it made you smile. ❤️`}
           </p>
           {experience.senderName && (
-            <p className="mt-5 text-sm text-muted-foreground">
-              — with love, <span className="font-semibold text-foreground">{experience.senderName}</span>
+            <p className="mt-5 text-sm text-gray-600">
+              — with love, <span className="font-semibold text-gray-900">{experience.senderName}</span>
             </p>
           )}
         </div>
@@ -564,7 +570,7 @@ function FinalScreen({
           </button>
           <a
             href="/"
-            className="h-12 w-full rounded-2xl border border-border bg-white/80 backdrop-blur-sm flex items-center justify-center text-sm font-medium text-foreground transition-all hover:bg-white"
+            className="h-12 w-full rounded-2xl border border-border bg-white/80 backdrop-blur-sm flex items-center justify-center text-sm font-medium text-gray-900 transition-all hover:bg-white"
           >
             Create your own surprise ❤️
           </a>

@@ -21,6 +21,7 @@ export interface OccasionTheme {
   primaryText: string; // Text on primary button
   accent: string;      // Accent for italics/highlights
   particle: string;    // Particle color
+  textColor?: string;  // Text color (if background is dark)
 }
 
 export interface OccasionConfig {
@@ -181,6 +182,7 @@ export const OCCASION_CONFIGS: Record<OccasionId, OccasionConfig> = {
       primaryText: "#fff",
       accent: "#FFD700",
       particle: "#FFD700",
+      textColor: "#FFFFFF",
     },
     particleType: "confetti",
     questions: [
