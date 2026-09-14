@@ -36,6 +36,7 @@ function CreateWizard() {
   const [step, setStep] = useState<WizardStep>("occasion");
   const [draft, setDraft] = useState<ExperienceDraft>(getDraft);
   const [shareSlug, setShareSlug] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const updateDraft = (patch: Partial<ExperienceDraft>) => {
     const updated = { ...draft, ...patch };
@@ -53,23 +54,31 @@ function CreateWizard() {
     else navigate({ to: "/" });
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!draft.occasion || !draft.recipientName || !draft.question) return;
-    const cfg = getOccasionConfig(draft.occasion);
-    const exp = createExperience({
-      occasion: draft.occasion,
-      recipientName: draft.recipientName.trim(),
-      senderName: draft.senderName?.trim() ?? "",
-      question: draft.question,
-      yesText: draft.yesText ?? cfg.yesText,
-      noText: draft.noText ?? cfg.noText,
-      message: draft.message ?? cfg.suggestedFinalMessage,
-      photos: draft.photos ?? [],
-      musicTrack: draft.musicTrack ?? "",
-    });
-    clearDraft();
-    setShareSlug(exp.slug);
-    setStep("share");
+    setIsPublishing(true);
+    try {
+      const cfg = getOccasionConfig(draft.occasion);
+      const exp = await createExperience({
+        occasion: draft.occasion,
+        recipientName: draft.recipientName.trim(),
+        senderName: draft.senderName?.trim() ?? "",
+        question: draft.question,
+        yesText: draft.yesText ?? cfg.yesText,
+        noText: draft.noText ?? cfg.noText,
+        message: draft.message ?? cfg.suggestedFinalMessage,
+        photos: draft.photos ?? [],
+        musicTrack: draft.musicTrack ?? "",
+      });
+      clearDraft();
+      setShareSlug(exp.slug);
+      setStep("share");
+    } catch (err) {
+      console.error("Failed to publish:", err);
+      alert("Failed to publish your surprise. Please try again.");
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const bgStyle = config
@@ -137,6 +146,7 @@ function CreateWizard() {
             config={config}
             draft={draft}
             onPublish={handlePublish}
+            isPublishing={isPublishing}
           />
         )}
         {step === "share" && shareSlug && (
@@ -544,10 +554,12 @@ function PreviewStep({
   config,
   draft,
   onPublish,
+  isPublishing,
 }: {
   config: ReturnType<typeof getOccasionConfig>;
   draft: ExperienceDraft;
   onPublish: () => void;
+  isPublishing: boolean;
 }) {
   return (
     <div className="rise-in">
@@ -577,10 +589,11 @@ function PreviewStep({
         <button
           type="button"
           onClick={onPublish}
-          className="h-14 w-full rounded-2xl text-base font-bold tracking-wide transition-all hover:opacity-90 active:scale-95"
+          disabled={isPublishing}
+          className="h-14 w-full rounded-2xl text-base font-bold tracking-wide transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:scale-100"
           style={{ background: config.theme.primary, color: config.theme.primaryText }}
         >
-          Create the magic ✨
+          {isPublishing ? "Uploading & Publishing..." : "Create the magic ✨"}
         </button>
         <p className="mt-3 text-center text-xs text-muted-foreground">
           You'll get a shareable link — no account needed.

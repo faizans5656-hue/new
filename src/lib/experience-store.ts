@@ -1,7 +1,6 @@
 // ─── Experience Data Model ───────────────────────────────────────────────────
-// Simple store for the interactive YES/NO surprise experiences.
-
 import type { OccasionId } from "./occasion-config";
+import { supabase } from "./supabase";
 
 export interface Experience {
   id: string;
@@ -13,76 +12,113 @@ export interface Experience {
   yesText: string;
   noText: string;
   message: string;
-  photos: string[]; // base64 data URLs
+  photos: string[];
   musicTrack: string;
   createdAt: string;
   viewCount: number;
   yesCount: number;
 }
 
-const STORAGE_KEY = "lumora_experiences";
+// ─── Supabase Database Methods ────────────────────────────────────────────────
 
-function load(): Experience[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Experience[]) : [];
-  } catch {
+export async function getAllExperiences(): Promise<Experience[]> {
+  const { data, error } = await supabase
+    .from("experiences")
+    .select("*")
+    .order("created_at", { ascending: false });
+    
+  if (error) {
+    console.error("Error fetching experiences:", error);
     return [];
   }
+  return data.map(mapDbToExperience);
 }
 
-function save(list: Experience[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+export async function getExperienceBySlug(slug: string): Promise<Experience | undefined> {
+  const { data, error } = await supabase
+    .from("experiences")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+    
+  if (error || !data) return undefined;
+  return mapDbToExperience(data);
 }
 
-export function getAllExperiences(): Experience[] {
-  return load().sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-}
-
-export function getExperienceBySlug(slug: string): Experience | undefined {
-  return load().find((e) => e.slug === slug);
-}
-
-export function createExperience(data: Omit<Experience, "id" | "slug" | "createdAt" | "viewCount" | "yesCount">): Experience {
-  const id = crypto.randomUUID();
+export async function createExperience(
+  data: Omit<Experience, "id" | "slug" | "createdAt" | "viewCount" | "yesCount">
+): Promise<Experience> {
   const slug = generateSlug(data.recipientName, data.occasion);
-  const now = new Date().toISOString();
-  const exp: Experience = {
-    ...data,
-    id,
-    slug,
-    createdAt: now,
-    viewCount: 0,
-    yesCount: 0,
+  
+  // 1. Upload photos to Supabase Storage if they are base64
+  const uploadedPhotos = await Promise.all(
+    data.photos.map((photo) => uploadBase64Photo(photo))
+  );
+
+  // 2. Insert into Supabase database
+  const { data: inserted, error } = await supabase
+    .from("experiences")
+    .insert({
+      slug,
+      occasion: data.occasion,
+      recipient_name: data.recipientName,
+      sender_name: data.senderName,
+      question: data.question,
+      yes_text: data.yesText,
+      no_text: data.noText,
+      message: data.message,
+      photos: uploadedPhotos,
+      music_track: data.musicTrack,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating experience:", error);
+    throw new Error(error.message);
+  }
+
+  return mapDbToExperience(inserted);
+}
+
+export async function recordView(slug: string) {
+  // We use an RPC call for atomic increment if available, but for simplicity we can just select and update
+  const exp = await getExperienceBySlug(slug);
+  if (exp) {
+    await supabase.from("experiences").update({ view_count: exp.viewCount + 1 }).eq("slug", slug);
+  }
+}
+
+export async function recordYes(slug: string) {
+  const exp = await getExperienceBySlug(slug);
+  if (exp) {
+    await supabase.from("experiences").update({ yes_count: exp.yesCount + 1 }).eq("slug", slug);
+  }
+}
+
+export async function deleteExperience(id: string) {
+  await supabase.from("experiences").delete().eq("id", id);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function mapDbToExperience(dbRow: any): Experience {
+  return {
+    id: dbRow.id,
+    slug: dbRow.slug,
+    occasion: dbRow.occasion,
+    recipientName: dbRow.recipient_name,
+    senderName: dbRow.sender_name,
+    question: dbRow.question,
+    yesText: dbRow.yes_text,
+    noText: dbRow.no_text,
+    message: dbRow.message,
+    photos: dbRow.photos || [],
+    musicTrack: dbRow.music_track || "",
+    createdAt: dbRow.created_at,
+    viewCount: dbRow.view_count || 0,
+    yesCount: dbRow.yes_count || 0,
   };
-  const all = load();
-  all.push(exp);
-  save(all);
-  return exp;
-}
-
-export function recordView(slug: string) {
-  const all = load();
-  const idx = all.findIndex((e) => e.slug === slug);
-  if (idx !== -1) {
-    all[idx]!.viewCount++;
-    save(all);
-  }
-}
-
-export function recordYes(slug: string) {
-  const all = load();
-  const idx = all.findIndex((e) => e.slug === slug);
-  if (idx !== -1) {
-    all[idx]!.yesCount++;
-    save(all);
-  }
-}
-
-export function deleteExperience(id: string) {
-  save(load().filter((e) => e.id !== id));
 }
 
 function generateSlug(name: string, occasion: string): string {
@@ -93,6 +129,46 @@ function generateSlug(name: string, occasion: string): string {
     .slice(0, 15);
   const random = Math.random().toString(36).slice(2, 8);
   return `${cleanName}-${occasion}-${random}`;
+}
+
+async function uploadBase64Photo(base64Data: string): Promise<string> {
+  // If it's already a URL (e.g. from a previous upload), return it
+  if (base64Data.startsWith('http')) return base64Data;
+  
+  // Extract content type and base64 string
+  const match = base64Data.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+  if (!match) return base64Data; // Fallback
+  
+  const contentType = match[1];
+  const b64Data = match[2];
+  
+  try {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteArrays.push(byteCharacters.charCodeAt(i));
+    }
+    const byteArray = new Uint8Array(byteArrays);
+    const blob = new Blob([byteArray], { type: contentType });
+    
+    const ext = contentType?.split('/')[1] || 'jpg';
+    const filename = `${crypto.randomUUID()}.${ext}`;
+    
+    const { data, error } = await supabase.storage
+      .from('lumora_photos')
+      .upload(filename, blob, { contentType });
+      
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('lumora_photos')
+      .getPublicUrl(filename);
+      
+    return publicUrl;
+  } catch (err) {
+    console.error("Error uploading photo:", err);
+    return base64Data; // Fallback to keeping it base64 if upload fails
+  }
 }
 
 // ─── Draft store (localStorage wizard state) ─────────────────────────────────
@@ -129,29 +205,20 @@ export function clearDraft() {
   localStorage.removeItem(DRAFT_KEY);
 }
 
-// ─── Demo seed ────────────────────────────────────────────────────────────────
-
-export function seedDemoExperience() {
-  const all = load();
-  if (all.some((e) => e.slug === "sarah-love-demo00")) return;
-  const now = new Date().toISOString();
-  const demo: Experience = {
-    id: crypto.randomUUID(),
+export async function seedDemoExperience() {
+  const existing = await getExperienceBySlug("sarah-love-demo00");
+  if (existing) return;
+  
+  await supabase.from("experiences").insert({
     slug: "sarah-love-demo00",
     occasion: "love",
-    recipientName: "Sarah",
-    senderName: "Alex",
+    recipient_name: "Sarah",
+    sender_name: "Alex",
     question: "Will you forever be mine?",
-    yesText: "Yes 💖",
-    noText: "No 🙈",
-    message:
-      "I've been wanting to ask you this for a while. You mean the world to me and I hope this little surprise made you smile. ❤️",
+    yes_text: "Yes 💖",
+    no_text: "No 🙈",
+    message: "I've been wanting to ask you this for a while. You mean the world to me and I hope this little surprise made you smile. ❤️",
     photos: [],
-    musicTrack: "",
-    createdAt: now,
-    viewCount: 47,
-    yesCount: 1,
-  };
-  all.push(demo);
-  save(all);
+    music_track: "",
+  });
 }

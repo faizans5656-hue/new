@@ -37,18 +37,35 @@ function RecipientPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    seedDemoExperience();
-    const t = setTimeout(() => {
-      const exp = getExperienceBySlug(slug);
-      setExperience(exp || "not-found");
-      if (exp) {
-        recordView(slug);
-        setPhase("reveal");
-      } else {
-        setPhase("done"); // Break out of the loading phase so NotFoundScreen can render
+    let active = true;
+    
+    async function load() {
+      try {
+        await seedDemoExperience();
+        // Keep artificial delay for effect
+        await new Promise((r) => setTimeout(r, 1600));
+
+        const exp = await getExperienceBySlug(slug);
+        if (!active) return;
+
+        setExperience(exp || "not-found");
+        if (exp) {
+          await recordView(slug);
+          setPhase("reveal");
+        } else {
+          setPhase("done"); // Break out of the loading phase so NotFoundScreen can render
+        }
+      } catch (error) {
+        console.error("Failed to load experience:", error);
+        if (active) {
+          setExperience("not-found");
+          setPhase("done");
+        }
       }
-    }, 1600);
-    return () => clearTimeout(t);
+    }
+    
+    load();
+    return () => { active = false; };
   }, [slug]);
 
   const startMusic = useCallback((exp: Experience) => {
@@ -79,8 +96,8 @@ function RecipientPage() {
     setPhase("question");
   };
 
-  const handleYes = () => {
-    if (experience && experience !== "not-found") recordYes(slug);
+  const handleYes = async () => {
+    if (experience && experience !== "not-found") await recordYes(slug);
     setPhase("celebration");
   };
 
